@@ -1,15 +1,20 @@
 import { client } from "$services/redis";
-import { userKeysLike, itemsKey } from "$services/keys";
+import { userLikesKey, itemsKey } from "$services/keys";
 import { insert } from "svelte/internal";
+import { getItems } from "./items";
 
 export const userLikesItem = async (itemId: string, userId: string) => {
-    return client.sIsMember(userKeysLike(userId), itemId)
+    return client.sIsMember(userLikesKey(userId), itemId)
 };
 
-export const likedItems = async (userId: string) => {};
+export const likedItems = async (userId: string) => {
+    const ids = await client.sMembers(userLikesKey(userId));
+
+    return getItems(ids);
+};
 
 export const likeItem = async (itemId: string, userId: string) => {
-    const inserted = await client.sAdd(userKeysLike(userId), itemId);
+    const inserted = await client.sAdd(userLikesKey(userId), itemId);
 
     if (inserted) {
         return client.hIncrBy(itemsKey(itemId), 'likes', 1);
@@ -17,7 +22,7 @@ export const likeItem = async (itemId: string, userId: string) => {
 };
 
 export const unlikeItem = async (itemId: string, userId: string) => {
-    const removed = await client.sRem(userKeysLike(userId), itemId);
+    const removed = await client.sRem(userLikesKey(userId), itemId);
 
     if (removed) {
         return client.hIncrBy(itemsKey(itemId), 'likes', -1);
