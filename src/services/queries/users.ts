@@ -1,14 +1,31 @@
 import type { CreateUserAttrs } from '$services/types';
 import { genId } from '$services/utils';
 import { client } from '$services/redis';
-import { userCacheKey } from '$services/keys';
-import { usernamesUniqueKey } from '$services/keys';
+import { usersKey, usernamesUniqueKey, usernamesKey } from '$services/keys';
 import { attr } from 'svelte/internal';
 
-export const getUserByUsername = async (username: string) => {};
+export const getUserByUsername = async (username: string) => {
+	// Use the username argument to look up the persons User ID
+	// with the usernames sorted set
+	const decimalId = await client.zScore(usernamesKey(), username);
+
+	// make sure we actually got an ID from the lookup
+	if (!decimalId) {
+		throw new Error('User does not exist');
+	}
+
+	// Take the id and convert it back to hex
+	const id = decimalId.toString(16);
+	// Use the id to look up the user's hash
+	const user = await client.hGetAll(usersKey(id));
+
+	// deserialize and return the hash
+	return deserialize(id, user);
+};
+
 
 export const getUserById = async (id: string) => {
-    const user = await client.hGetAll(userCacheKey(id));
+    const user = await client.hGetAll(usersKey(id));
 
     return deserialize(id, user);
 };
@@ -21,8 +38,12 @@ export const createUser = async (attrs: CreateUserAttrs) => {
         throw new Error('Username is taken');
     }
 
-    await client.hSet(userCacheKey(id), serialize(attrs));
+    await client.hSet(usersKey(id), serialize(attrs));
     await client.sAdd(usernamesUniqueKey(), attrs.username)
+    await client.zAdd(usernamesKey(), {
+        value: attrs.username,
+        score: parseInt(id, 16)
+    });
     
     return id;
 };
