@@ -22,13 +22,12 @@ export const getItems = async (ids: string[]) => {
 
     const results = await Promise.all(commands);
 
-    results.map((result, i) => {
-        if (Object.keys(result).length == 0) {
-            return null;
-        }
-
+    return results
+        .map((result, i) => {
+        if (Object.keys(result).length === 0) return null;
         return deserialize(ids[i], result);
-    });
+        })
+        .filter((item) => item !== null);
 };
 
 export const createItem = async (attrs: CreateItemAttrs, userId: string) => {
