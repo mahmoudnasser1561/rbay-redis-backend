@@ -67,8 +67,8 @@ client.on('connect', async () => {
 	try {
 		await createIndexes();
 	} catch (err) {
-		console.log(err);
+		console.error(err);
 	}
-})
+});
 
 export { client };
