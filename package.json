@@ -15,7 +15,8 @@
 		"cli": "node cli/index.js",
 		"sandbox": "ts-node-dev -T ./sandbox/index.ts",
 		"bench:noop": "ts-node -T ./bench/noop-load.ts",
-		"bench:reset": "ts-node-dev -r tsconfig-paths/register -T --exit-child ./bench/reset.ts"
+		"bench:reset": "ts-node-dev -r tsconfig-paths/register -T --exit-child ./bench/reset.ts",
+		"bench:a": "ts-node-dev -r tsconfig-paths/register -T --exit-child ./bench/bids-concurrency.ts"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-auto": "^1.0.0-next.17",
