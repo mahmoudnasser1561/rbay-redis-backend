@@ -1,0 +1,129 @@
+{
+  "endpoint": "http://localhost:3000/bench/noop",
+  "generatedAt": "2026-09-09T09:31:01.759Z",
+  "concurrencyLevels": [
+    1,
+    10,
+    50,
+    100,
+    250,
+    500
+  ],
+  "repeatsPerLevel": 3,
+  "results": [
+    {
+      "concurrency": 1,
+      "repeats": 3,
+      "totalRequests": 3,
+      "failedRequests": 0,
+      "throughputReqPerSec": {
+        "perRepeat": [
+          19.96,
+          168.21,
+          145.94
+        ],
+        "median": 145.94
+      },
+      "latencyMs": {
+        "p50": 6.84,
+        "p95": 50.02,
+        "p99": 50.02
+      }
+    },
+    {
+      "concurrency": 10,
+      "repeats": 3,
+      "totalRequests": 30,
+      "failedRequests": 0,
+      "throughputReqPerSec": {
+        "perRepeat": [
+          238.06,
+          239.57,
+          254.97
+        ],
+        "median": 239.57
+      },
+      "latencyMs": {
+        "p50": 33.46,
+        "p95": 39.5,
+        "p99": 39.97
+      }
+    },
+    {
+      "concurrency": 50,
+      "repeats": 3,
+      "totalRequests": 150,
+      "failedRequests": 0,
+      "throughputReqPerSec": {
+        "perRepeat": [
+          320.81,
+          367.46,
+          555.52
+        ],
+        "median": 367.46
+      },
+      "latencyMs": {
+        "p50": 84.25,
+        "p95": 130.44,
+        "p99": 143.69
+      }
+    },
+    {
+      "concurrency": 100,
+      "repeats": 3,
+      "totalRequests": 300,
+      "failedRequests": 0,
+      "throughputReqPerSec": {
+        "perRepeat": [
+          414.95,
+          434.48,
+          404.15
+        ],
+        "median": 414.95
+      },
+      "latencyMs": {
+        "p50": 209.69,
+        "p95": 234.29,
+        "p99": 234.38
+      }
+    },
+    {
+      "concurrency": 250,
+      "repeats": 3,
+      "totalRequests": 750,
+      "failedRequests": 0,
+      "throughputReqPerSec": {
+        "perRepeat": [
+          449.53,
+          700.64,
+          706.99
+        ],
+        "median": 700.64
+      },
+      "latencyMs": {
+        "p50": 301.8,
+        "p95": 446.15,
+        "p99": 509.03
+      }
+    },
+    {
+      "concurrency": 500,
+      "repeats": 3,
+      "totalRequests": 1500,
+      "failedRequests": 0,
+      "throughputReqPerSec": {
+        "perRepeat": [
+          687.02,
+          867.34,
+          821.07
+        ],
+        "median": 821.07
+      },
+      "latencyMs": {
+        "p50": 466.41,
+        "p95": 554.93,
+        "p99": 647.88
+      }
+    }
+  ]
+}
