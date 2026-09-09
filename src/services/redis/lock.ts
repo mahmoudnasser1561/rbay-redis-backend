@@ -2,11 +2,21 @@ import { error } from 'console';
 import { client } from './client';
 import { randomBytes } from 'crypto';
 
-export const withLock = async (key: string, cb: (redisClient: Client, signal: any) => any) => {
+interface WithLockOpts {
+	retries?: number;
+	retryDelayMs?: number | [number, number];
+	timeoutMs?: number;
+}
+
+export const withLock = async (
+	key: string,
+	cb: (redisClient: Client, signal: any) => any,
+	opts: WithLockOpts = {}
+) => {
 	// Initialize a few variables to control retry behavior
-	const retryDelayMs = 100;
-	let retries = 20;
-	const timeoutMs = 2000;
+	const retryDelayMs = opts.retryDelayMs ?? 100;
+	let retries = opts.retries ?? 20;
+	const timeoutMs = opts.timeoutMs ?? 2000;
 
 	// Generate a random value to store at the lock key
 	const token = randomBytes(6).toString('hex');
@@ -19,12 +29,12 @@ export const withLock = async (key: string, cb: (redisClient: Client, signal: an
 		// Try to do a SET NX operation
 		const acquired = await client.set(lockKey, token, {
 			NX: true,
-			PX: 2000
+			PX: timeoutMs
 		});
 
 		if (!acquired) {
-			// ELSE brief pause (retryDelayMs) and then retry
-			await pause(retryDelayMs);
+			// ELSE brief pause and then retry, jittered when a [min, max] range is given
+			await pause(resolveDelay(retryDelayMs));
 			continue;
 		}
 
@@ -66,4 +76,10 @@ const pause = (duration: number) => {
 	return new Promise((resolve) => {
 		setTimeout(resolve, duration);
 	});
+};
+
+const resolveDelay = (delay: number | [number, number]) => {
+	if (!Array.isArray(delay)) return delay;
+	const [min, max] = delay;
+	return min + Math.random() * (max - min);
 };
