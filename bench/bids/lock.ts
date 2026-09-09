@@ -11,11 +11,6 @@ import { getItem } from '$services/queries/items/items';
 // retries at a fixed 100ms, which would make "lock beats optimistic" partly
 // a function of a much larger retry allowance rather than the mechanism
 // itself. See the fairness note in the plan for §1.0.1.
-//
-// NOTE: faithfully reproduces a bug present in production — the three writes
-// below are fired via Promise.all but not awaited/returned, so withLock's
-// `finally` can release the lock before they've actually settled. Left
-// as-is deliberately: this benchmark is measuring what's actually shipped.
 const RETRY_OPTS = { retries: 5, retryDelayMs: [5, 25] as [number, number] };
 
 export const createBid = async (attrs: CreateBidAttrs) => {
@@ -37,7 +32,7 @@ export const createBid = async (attrs: CreateBidAttrs) => {
 
 			const serialized = serializeHistory(attrs.amount, attrs.createdAt.toMillis());
 
-			Promise.all([
+			await Promise.all([
 				lockedClient.rPush(bidHistoryKey(attrs.itemId), serialized),
 				lockedClient.hSet(itemsKey(item.id), {
 					bids: item.bids + 1,
