@@ -42,6 +42,8 @@ export const withLock = async (key: string, cb: (redisClient: Client, signal: an
 			await client.unlock(lockKey, token)
 		}
 	}
+
+	throw new Error(`Could not acquire lock for key "${key}": retry budget exhausted`);
 };
 
 type Client = typeof client;
