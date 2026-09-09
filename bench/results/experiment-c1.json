@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-09-09T13:37:10.679Z",
+  "opsPerMeasurement": 1000,
+  "results": [
+    {
+      "label": "incrementView (Lua script)",
+      "clientRoundTrips": 1000,
+      "roundTripsPerOp": 1,
+      "rawBreakdown": {
+        "hincrby": 986,
+        "zincrby": 986,
+        "pfadd": 1000,
+        "evalsha": 1000,
+        "config|resetstat": 1
+      }
+    },
+    {
+      "label": "incrementView (naive, 3 unscripted commands)",
+      "clientRoundTrips": 2972,
+      "roundTripsPerOp": 2.972,
+      "rawBreakdown": {
+        "hincrby": 986,
+        "zincrby": 986,
+        "pfadd": 1000,
+        "config|resetstat": 1
+      }
+    },
+    {
+      "label": "createBid (production, uncontended)",
+      "clientRoundTrips": 7001,
+      "roundTripsPerOp": 7.001,
+      "rawBreakdown": {
+        "rpush": 1000,
+        "exec": 1000,
+        "multi": 1000,
+        "auth": 1,
+        "hgetall": 1000,
+        "zadd": 1000,
+        "hset": 1000,
+        "watch": 1000,
+        "config|resetstat": 1
+      }
+    }
+  ]
+}
