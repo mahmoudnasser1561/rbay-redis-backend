@@ -1,0 +1,39 @@
+{
+  "generatedAt": "2026-09-09T12:34:34.104Z",
+  "scales": [
+    1000,
+    10000,
+    100000,
+    1000000
+  ],
+  "results": [
+    {
+      "scale": 1000,
+      "hllMemoryBytes": 2624,
+      "setMemoryBytes": 48320,
+      "pfCount": 997,
+      "relativeErrorPct": 0.3
+    },
+    {
+      "scale": 10000,
+      "hllMemoryBytes": 14400,
+      "setMemoryBytes": 531200,
+      "pfCount": 9946,
+      "relativeErrorPct": 0.54
+    },
+    {
+      "scale": 100000,
+      "hllMemoryBytes": 14400,
+      "setMemoryBytes": 5572992,
+      "pfCount": 98938,
+      "relativeErrorPct": 1.0619999999999998
+    },
+    {
+      "scale": 1000000,
+      "hllMemoryBytes": 14400,
+      "setMemoryBytes": 48388736,
+      "pfCount": 999429,
+      "relativeErrorPct": 0.0571
+    }
+  ]
+}
