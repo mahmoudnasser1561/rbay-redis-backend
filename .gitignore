@@ -13,3 +13,7 @@ dist/
 # OS / Editor artifacts
 .DS_Store
 *.log
+
+# Raw k6 per-run JSONL streams (intermediate data, can be large) -
+# bench/results/experiment-b.json (the aggregated output) is what's committed
+bench/results/k6-raw/
