@@ -46,6 +46,21 @@ Building this harness also found and fixed two real correctness bugs, both "clai
 
 HLL memory plateaus at 14.4KB between 10k and 1M — Redis's sparse→dense encoding switch, not a measurement artifact. Raw: `bench/results/experiment-d.json`.
 
+## Experiment B — Sustained contention (real HTTP, k6)
+
+`bench/k6/contention.js` (load) + `bench/k6/run-protocol.sh` (orchestration: 30s warmup discarded + 60s measured per run, `CONFIG RESETSTAT` fired as the measured window starts) + `bench/k6/aggregate.ts` (parses the raw `--out json=` stream, discards anything before the measured window, computes median + IQR across repeats) — `npm run bench:b && npm run bench:b:aggregate`. Real HTTP through `/bench/bid`, hot-item workload (sustained bidding on one item — "the case that matters" per the design). **Scoped down from the full 6-level × 5-repeat protocol** (would be ~90min) **to N ∈ {1, 100, 500} × 2 repeats** (~18min) — Experiment A had already produced the decisive correctness finding, so the full sweep's marginal value didn't justify the time; this scope is enough to confirm or refute a crossover.
+
+| Strategy | N | Raw req/s | **Accepted/s** | p50 | retry-exhausted/60s |
+|---|---|---|---|---|---|
+| lock | 1 | 341.4 | 341.4 | 2.4ms | 0 |
+| lock | 100 | 713.1 | **52.3** | 145.3ms | 39,338 |
+| lock | 500 | 810.4 | **4.9** | 600.8ms | 48,290 |
+| optimistic | 1 | 347.1 | 347.1 | 2.2ms | 0 |
+| optimistic | 100 | 455.3 | 418.8 | 206.8ms | 0 |
+| optimistic | 500 | 478.4 | 429.0 | 1039.5ms | 0 |
+
+**Raw throughput is actively misleading here, which is the actual finding.** At N=500, lock posts a *higher* raw req/s than optimistic (810 vs 478) and a *lower* p50 (600ms vs 1040ms) — read naively, lock looks faster. But a retry-exhausted request fails in ~125ms and still counts as one completed request, so a strategy that mostly fails posts a high raw number for doing almost nothing. Looking at what actually got accepted: lock delivers 4.9 successful bids/sec at N=500 versus optimistic's 429 — about **1% of optimistic's real throughput**, at the same concurrency, on the same hardware. No crossover at any tested level; optimistic wins or ties everywhere. Raw: `bench/results/experiment-b.json`.
+
 ## Experiment C1 — Exact command counts
 
 `bench/command-count.ts` — `npm run bench:c1`. `CONFIG RESETSTAT` → 1000 sequential (uncontended) ops → `INFO commandstats`, parsed per-command rather than summed blindly — a Lua script's internal `redis.call()`s show up as their own `cmdstat_*` entries, so a naive sum of every line conflates server-side script execution with actual client-server round trips.
@@ -76,12 +91,20 @@ npm run bench:noop   # §1.0.3 no-op control
 npm run bench:a      # Experiment A (~a few minutes)
 npm run bench:d      # Experiment D
 npm run bench:c1     # Experiment C1
+
+# Experiment B needs the dev server running separately, and k6 installed
+# (this repo used the static binary, no sudo: see bench/k6/run-protocol.sh)
+npm run dev &
+npm run bench:b            # full protocol: 6 levels x 2 strategies x 5 repeats, ~90min
+npm run bench:b:aggregate  # writes bench/results/experiment-b.json
+# or scope it down, e.g.:
+CONCURRENCY_LEVELS="1 100 500" REPEATS=2 npm run bench:b   # ~18min
 ```
 
 Each writes its raw results to `bench/results/`, overwriting the committed ones — diff before committing a re-run.
 
 ## Status
 
-Done: §1.0.3 (no-op control), §1.0.1 (three strategies), §1.0.2 (deterministic reset), Experiment A, Experiment D, Experiment C1.
+Done: §1.0.3 (no-op control), §1.0.1 (three strategies), §1.0.2 (deterministic reset), Experiment A, Experiment D, Experiment C1, Experiment B (scoped).
 
-Not yet built: Experiment B (contention/success-rate crossover, k6), Experiment C2 (netem RTT sweep), Experiment E (search), AWS deployment, CI regression gate, observability dashboard.
+Not yet built: Experiment C2 (netem RTT sweep), Experiment E (search), CI regression gate. AWS deployment and the observability dashboard were deliberately dropped — redundant with two other portfolio projects (`automated-monitoring-stack`, `zero-credential-pipeline`) that already cover Terraform/AWS and Prometheus/Grafana; see `project_plan.md` in the planning directory for the reasoning.

@@ -22,6 +22,8 @@ Concurrent bids on the same item are the one place a naive read-modify-write bre
 - **A custom distributed lock** (`SET NX PX` + a Lua-scripted unlock, `src/services/redis/lock.ts`) — never corrupted data, but failed to admit the correct winning bid in up to 100% of trials at high concurrency; production's real retry configuration made this *worse*, not better, because unjittered retries synchronize waiting clients into thundering-herd rounds.
 - **Optimistic transactions** (`WATCH`/`MULTI` with a jittered retry loop) — zero lost updates and zero price deficit at every concurrency level tested, up to 500 simultaneous bidders. **This is what production uses** (`src/services/queries/bids.ts`).
 
+Under sustained real HTTP load (k6, Experiment B) the gap is starker than raw throughput suggests: at 500 concurrent bidders the lock posts a *higher* raw requests/sec than optimistic (810 vs. 478) because a failed request returns fast — but only 4.9 of those requests/sec actually succeed, versus 429/sec for optimistic. Raw throughput alone would have pointed the wrong way here.
+
 `lock.ts` stays in the codebase — it's a measured, rejected alternative the benchmark suite (`bench/bids/lock.ts`) still compares against, not dead code.
 
 ## Features
@@ -72,4 +74,4 @@ This is a checkpoint, not a finished product. The Redis persistence layer is imp
 
 - `getSimilarItems` (`src/services/queries/items/similar.ts`) is an unimplemented stub.
 - No automated test suite yet.
-- Benchmarking is partial: concurrency/correctness, HyperLogLog memory/accuracy, and exact Redis command counts are done. Contention throughput under load, real network-latency validation, search benchmarks, AWS deployment, a CI regression gate, and observability are not yet built.
+- Benchmarking is partial: concurrency/correctness, sustained-load throughput, HyperLogLog memory/accuracy, and exact Redis command counts are done. Real network-latency validation and search benchmarks are not yet built. A CI regression gate is planned; AWS deployment and an observability dashboard were deliberately dropped as redundant with other portfolio projects that already cover that ground.
