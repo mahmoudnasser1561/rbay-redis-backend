@@ -31,7 +31,7 @@ export const createBid = async (attrs: CreateBidAttrs) => {
 		// 	throw new Error('Lock Expired, cant write more data' )
 		// }
 
-		Promise.all([
+		await Promise.all([
 			lockedClient.rPush(bidHistoryKey(attrs.itemId), serialized),
 			lockedClient.hSet(itemsKey(item.id), {
 				bids: item.bids + 1,
