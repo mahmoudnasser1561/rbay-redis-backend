@@ -16,12 +16,13 @@ Rather than using Redis as a cache in front of another database, this project pu
 
 ## Concurrency handling
 
-Concurrent bids on the same item are the one place a naive read-modify-write breaks correctness (lost updates). Two approaches were built and compared:
+Concurrent bids on the same item are the one place a naive read-modify-write breaks correctness (lost updates). Three approaches were built and empirically compared under a 150-run benchmark (naive vs. optimistic vs. a distributed lock, same retry budget, 10-500 concurrent bidders) — full methodology and raw numbers in [`BENCHMARKS.md`](./BENCHMARKS.md):
 
-1. **Optimistic transactions** (`WATCH`/`MULTI`) — the first implementation.
-2. **A custom distributed lock** (`SET NX PX` + a Lua-scripted unlock that only deletes the key if the token still matches) — replaced (1) after it showed a higher success rate under contention. The lock hands the callback a `Proxy`-wrapped client that throws once the lock's timeout has elapsed, so a stalled transaction can't keep writing after its safety window expires.
+- **Naive read-modify-write** — corrupted the item's final price in 100% of trials under contention (a median $356 deficit below the true winning bid at 500 concurrent bidders).
+- **A custom distributed lock** (`SET NX PX` + a Lua-scripted unlock, `src/services/redis/lock.ts`) — never corrupted data, but failed to admit the correct winning bid in up to 100% of trials at high concurrency; production's real retry configuration made this *worse*, not better, because unjittered retries synchronize waiting clients into thundering-herd rounds.
+- **Optimistic transactions** (`WATCH`/`MULTI` with a jittered retry loop) — zero lost updates and zero price deficit at every concurrency level tested, up to 500 simultaneous bidders. **This is what production uses** (`src/services/queries/bids.ts`).
 
-See `src/services/redis/lock.ts` and `src/services/queries/bids.ts`.
+`lock.ts` stays in the codebase — it's a measured, rejected alternative the benchmark suite (`bench/bids/lock.ts`) still compares against, not dead code.
 
 ## Features
 
@@ -50,7 +51,7 @@ See `src/services/redis/lock.ts` and `src/services/queries/bids.ts`.
 | `idx:items` | RediSearch index | Full-text + faceted search over item hashes |
 | `users:likes#<id>` | Set | Item IDs a user has liked |
 | `pagecache#<route>` | String | Cached rendered HTML for static routes |
-| `lock:<key>` | String (`NX`/`PX`) | Distributed lock for bid concurrency |
+| `lock:<key>` | String (`NX`/`PX`) | Distributed lock — benchmark-only now; production uses optimistic transactions (see Concurrency handling) |
 
 ## Stack
 
@@ -67,8 +68,8 @@ npm run dev
 
 ## Status
 
-This is a checkpoint, not a finished product. The Redis persistence layer above is implemented and working; **load-testing/benchmarking the concurrency handling and search, plus a cloud deployment, are the next phase**. Known gaps at this point:
+This is a checkpoint, not a finished product. The Redis persistence layer is implemented and working, and the concurrency-handling and data-structure decisions above are backed by real, committed benchmarks — not assumptions — see [`BENCHMARKS.md`](./BENCHMARKS.md). Known gaps at this point:
 
 - `getSimilarItems` (`src/services/queries/items/similar.ts`) is an unimplemented stub.
 - No automated test suite yet.
-- No benchmark numbers yet — that's the next milestone.
+- Benchmarking is partial: concurrency/correctness, HyperLogLog memory/accuracy, and exact Redis command counts are done. Contention throughput under load, real network-latency validation, search benchmarks, AWS deployment, a CI regression gate, and observability are not yet built.
