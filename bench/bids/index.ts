@@ -1,8 +1,8 @@
 import type { CreateBidAttrs } from '$services/types';
 
-export type BidStrategy = 'naive' | 'optimistic' | 'lock';
+export type BidStrategy = 'naive' | 'optimistic' | 'lock' | 'lock-prod-budget';
 
-const STRATEGIES: BidStrategy[] = ['naive', 'optimistic', 'lock'];
+const STRATEGIES: BidStrategy[] = ['naive', 'optimistic', 'lock', 'lock-prod-budget'];
 
 const resolveStrategy = (): BidStrategy => {
 	const value = process.env.BID_STRATEGY;
@@ -24,6 +24,8 @@ const load = async (strategy: BidStrategy): Promise<(attrs: CreateBidAttrs) => P
 			return (await import('./optimistic')).createBid;
 		case 'lock':
 			return (await import('./lock')).createBid;
+		case 'lock-prod-budget':
+			return (await import('./lock-prod-budget')).createBid;
 	}
 };
 
