@@ -29,6 +29,7 @@ interface RunMetrics {
 	concurrency: number;
 	repeat: number;
 	throughputReqPerSec: number;
+	acceptedPerSec: number;
 	p50: number;
 	p95: number;
 	p99: number;
@@ -91,13 +92,21 @@ const analyzeRun = (points: Point[], meta: { strategy: string; concurrency: numb
 	const countMetric = (name: string) =>
 		points.filter((p) => p.metric === name && inWindow(p)).length;
 
+	const accepted = countMetric('bid_accepted');
+
 	return {
 		...meta,
+		// Raw completed-requests/sec is misleading on its own: a request
+		// that fails fast (retry-budget exhaustion) still completes and
+		// counts toward it, so a strategy that mostly fails can post a
+		// HIGHER raw throughput than one that mostly succeeds. acceptedPerSec
+		// is the number that actually means something.
 		throughputReqPerSec: measuredDurations.length / MEASURED_WINDOW_SEC,
+		acceptedPerSec: accepted / MEASURED_WINDOW_SEC,
 		p50: percentile(sortedDurations, 50),
 		p95: percentile(sortedDurations, 95),
 		p99: percentile(sortedDurations, 99),
-		accepted: countMetric('bid_accepted'),
+		accepted,
 		tooLow: countMetric('bid_too_low'),
 		retryExhausted: countMetric('bid_retry_exhausted'),
 		otherError: countMetric('bid_other_error')
@@ -109,6 +118,7 @@ interface GroupSummary {
 	concurrency: number;
 	repeats: number;
 	throughputReqPerSec: { median: number; iqr: number };
+	acceptedPerSec: { median: number; iqr: number };
 	p50: { median: number; iqr: number };
 	p95: { median: number; iqr: number };
 	p99: { median: number; iqr: number };
@@ -130,6 +140,7 @@ const summarizeGroup = (runs: RunMetrics[]): GroupSummary => {
 		concurrency: runs[0].concurrency,
 		repeats: runs.length,
 		throughputReqPerSec: stat('throughputReqPerSec'),
+		acceptedPerSec: stat('acceptedPerSec'),
 		p50: stat('p50'),
 		p95: stat('p95'),
 		p99: stat('p99'),
@@ -155,8 +166,8 @@ const main = async () => {
 		const metrics = analyzeRun(points, meta);
 		runs.push(metrics);
 		console.log(
-			`  ${file}: throughput=${metrics.throughputReqPerSec.toFixed(1)}/s p50=${metrics.p50.toFixed(1)}ms ` +
-				`p95=${metrics.p95.toFixed(1)}ms accepted=${metrics.accepted} tooLow=${metrics.tooLow} ` +
+			`  ${file}: raw=${metrics.throughputReqPerSec.toFixed(1)}/s accepted=${metrics.acceptedPerSec.toFixed(1)}/s ` +
+				`p50=${metrics.p50.toFixed(1)}ms p95=${metrics.p95.toFixed(1)}ms tooLow=${metrics.tooLow} ` +
 				`retryExhausted=${metrics.retryExhausted} otherError=${metrics.otherError}`
 		);
 	}
@@ -178,12 +189,21 @@ const main = async () => {
 	);
 
 	console.log('\n=== summary (median [IQR] across repeats) ===');
-	console.log('strategy'.padEnd(12) + 'N'.padEnd(6) + 'throughput/s'.padEnd(18) + 'p50 ms'.padEnd(14) + 'p95 ms'.padEnd(14) + 'retry_exhausted');
+	console.log(
+		'strategy'.padEnd(12) +
+			'N'.padEnd(6) +
+			'raw req/s'.padEnd(16) +
+			'accepted/s'.padEnd(16) +
+			'p50 ms'.padEnd(14) +
+			'p95 ms'.padEnd(14) +
+			'retry_exhausted'
+	);
 	for (const s of summaries) {
 		console.log(
 			s.strategy.padEnd(12) +
 				String(s.concurrency).padEnd(6) +
-				`${s.throughputReqPerSec.median.toFixed(1)} [${s.throughputReqPerSec.iqr.toFixed(1)}]`.padEnd(18) +
+				`${s.throughputReqPerSec.median.toFixed(1)} [${s.throughputReqPerSec.iqr.toFixed(1)}]`.padEnd(16) +
+				`${s.acceptedPerSec.median.toFixed(1)} [${s.acceptedPerSec.iqr.toFixed(1)}]`.padEnd(16) +
 				`${s.p50.median.toFixed(1)} [${s.p50.iqr.toFixed(1)}]`.padEnd(14) +
 				`${s.p95.median.toFixed(1)} [${s.p95.iqr.toFixed(1)}]`.padEnd(14) +
 				`${s.retryExhausted.median.toFixed(1)} [${s.retryExhausted.iqr.toFixed(1)}]`
